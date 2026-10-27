@@ -70,6 +70,15 @@ TOOL_REGISTRY: list = [
                         "Lookback window in days for scan-activity findings."
                     ),
                 },
+                "include_blast_radius": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": (
+                        "If true, attach a blast_radius_summary (direct/"
+                        "transitive foreign-key dependent counts) to each "
+                        "non-'active' finding."
+                    ),
+                },
             },
             "required": [],
             "additionalProperties": False,
@@ -114,6 +123,38 @@ TOOL_REGISTRY: list = [
         returns={
             "type": "object",
             "description": "{schema, ratio_threshold, tables: [...]}",
+        },
+    ),
+    ToolDefinition(
+        name="blast_radius",
+        description=(
+            "Find tables that depend on a given table through foreign "
+            "keys, directly and transitively. Reports foreign-key "
+            "dependency structure only — not a safety verdict."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "schema": {
+                    "type": "string",
+                    "default": "public",
+                    "description": "Postgres schema name to analyze.",
+                },
+                "table": {
+                    "type": "string",
+                    "description": "Table name to compute the blast radius for.",
+                },
+            },
+            "required": ["table"],
+            "additionalProperties": False,
+        },
+        returns={
+            "type": "object",
+            "description": (
+                "{table, direct_dependents: [{table, columns}], "
+                "transitive_dependents: [{table, depth, path}], "
+                "total_dependents, limitations}"
+            ),
         },
     ),
 ]

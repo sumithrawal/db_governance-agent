@@ -1,0 +1,14 @@
+[
+  {
+    "question": "What tables exist in the public schema and what columns do they have?",
+    "expected_tool": "schema_introspect"
+  },
+  {
+    "question": "Are there any tables that haven't been queried in the last 90 days?",
+    "expected_tool": "unused_objects"
+  },
+  {
+    "question": "Which tables are taking up the most disk space?",
+    "expected_tool": "storage_stats"
+  }
+]

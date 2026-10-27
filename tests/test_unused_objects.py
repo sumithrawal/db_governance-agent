@@ -69,3 +69,23 @@ def test_duplicate_index_is_reported_regardless_of_window():
     dupes_365 = {tuple(d["index_names"]) for d in result_365["duplicate_indexes"]}
     assert dupes_0 == dupes_365
     assert len(dupes_0) > 0
+
+
+def test_blast_radius_summary_absent_when_flag_off():
+    result = find_unused_objects("public", days=90, include_blast_radius=False)
+    assert len(result["unused_candidates"]) > 0  # otherwise this test proves nothing
+    for t in result["tables"]:
+        assert "blast_radius_summary" not in t
+
+
+def test_blast_radius_summary_present_on_every_non_active_finding_when_flag_on():
+    result = find_unused_objects("public", days=90, include_blast_radius=True)
+    assert len(result["unused_candidates"]) > 0  # otherwise this test proves nothing
+    for t in result["tables"]:
+        if t["status"] != STATUS_ACTIVE:
+            assert "blast_radius_summary" in t
+            summary = t["blast_radius_summary"]
+            assert "direct_dependent_count" in summary
+            assert "transitive_dependent_count" in summary
+        else:
+            assert "blast_radius_summary" not in t

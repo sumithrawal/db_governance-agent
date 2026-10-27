@@ -20,6 +20,8 @@ from typing import Optional
 import psycopg2
 
 from app.db import get_readonly_connection, dict_cursor
+from app.tools.blast_radius import compute_blast_radius
+from app.tools.schema_introspect import introspect_schema
 
 STATUS_ACTIVE = "active"
 STATUS_NO_ACTIVITY_IN_WINDOW = "no_activity_in_window"
@@ -228,11 +230,18 @@ def _fetch_duplicate_indexes(cur, schema: str) -> list:
     return duplicates
 
 
-def find_unused_objects(schema: str = "public", days: int = 90) -> dict:
+def find_unused_objects(
+    schema: str = "public", days: int = 90, include_blast_radius: bool = False
+) -> dict:
     """
     Flag tables with no recorded scan activity in the last `days` days, and
     duplicate indexes (same table, same leading columns), as findings with
     evidence — never as a bare "unused" verdict.
+
+    When include_blast_radius is True, each non-"active" finding also gets a
+    blast_radius_summary (direct/transitive dependent counts via foreign
+    keys) to help gauge the consequence of acting on it. Off by default;
+    existing behavior is unchanged when the flag is false.
     """
     if days < 0:
         raise ValueError("days must be >= 0")
@@ -265,6 +274,15 @@ def find_unused_objects(schema: str = "public", days: int = 90) -> dict:
     unused_candidates = [
         t for t in classified if t["status"] != STATUS_ACTIVE
     ]
+
+    if include_blast_radius and unused_candidates:
+        introspected_tables = introspect_schema(schema)["tables"]
+        for t in unused_candidates:
+            radius = compute_blast_radius(introspected_tables, t["table_name"])
+            t["blast_radius_summary"] = {
+                "direct_dependent_count": len(radius["direct_dependents"]),
+                "transitive_dependent_count": radius["total_dependents"],
+            }
 
     return {
         "schema": schema,
