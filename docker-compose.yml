@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_READONLY_USER: ${DB_READONLY_USER}
+      DB_READONLY_PASSWORD: ${DB_READONLY_PASSWORD}
+      DB_AUDIT_USER: ${DB_AUDIT_USER}
+      DB_AUDIT_PASSWORD: ${DB_AUDIT_PASSWORD}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init/01_create_roles.sh:/docker-entrypoint-initdb.d/01_create_roles.sh:ro
+      - ./app/schema.sql:/docker-entrypoint-initdb.d/02_audit_schema.sql:ro
+      - ./db/init/03_audit_grants.sh:/docker-entrypoint-initdb.d/03_audit_grants.sh:ro
+      - ./seed/seed.sql:/docker-entrypoint-initdb.d/04_seed.sql:ro
+      - ./db/init/05_readonly_grants.sh:/docker-entrypoint-initdb.d/05_readonly_grants.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
